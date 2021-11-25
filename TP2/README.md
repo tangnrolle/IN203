@@ -62,3 +62,5 @@ séquentiel |
 
 
 *Expliquer la façon dont vous avez calculé la dimension locale sur chaque processus, en particulier quand le nombre de processus ne divise pas la dimension de la matrice.*
+
+On isole chaque somme partielle du produit matrice*vecteur par colonnes et on les somme grâce à MPI_Allreduce.
