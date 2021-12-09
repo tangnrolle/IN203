@@ -10,6 +10,7 @@
 
 ## lscpu
 
+```
 Architecture:                    x86_64
 CPU op-mode(s):                  32-bit, 64-bit
 Byte Order:                      Little Endian
@@ -34,7 +35,7 @@ L1i cache:                       128 KiB
 L2 cache:                        1 MiB
 L3 cache:                        32 MiB
 NUMA node0 CPU(s):               0-3
-
+```
 
 *Des infos utiles s'y trouvent : nb core, taille de cache*
 
@@ -122,7 +123,7 @@ On teste de parralleléliser la boucle j,k,i (meilleure boucle) grâce à OpenMP
 1         |     0.8118     |     4840.25    |    2912.19     |    2777.49 2   |    9448.28 
 2         |     0.4548     |     4720.9     |                |                |
 3         |     0.3115     |     6892.27    |    13823.4     |                |
-4         |     0.2674     |     8030.97    |    18040.6     |                |  
+4         |     0.2674     |     8030.97    |    18040.6     |                | 
 5         |     0.6357     |     3377.9     |    19009.2     |                |
 6         |     0.6361     |     3375.77    |                |                |
 7         |     0.6104     |     3517.92    |                |                |
@@ -161,12 +162,43 @@ On conserve une dimension de 1024 pour avoir la version optimale de la version d
   2      |   0.438104   | 40.9572|
   4      |   0.280389   | 40.8391|
   6      |   0.610676   | 43.8346|
-  8      |   0.619447   |
+  8      |   0.619447   |        |
 
 Pour des petites matrices (n<=1024), le Speedup est de 2.77 et intervient pour 4 threads. Il est très proche de celui que l'on obtenait pour le produit matric-matrice sans la subdivision par blocs.
 En revanche, pour des grandes matrices (n=4096 par exemple) le speedup est de 1.4, contrairement à la version précédente ou il était de 1.2 environ.
 On gagne donc en efficacité pour les matrices de grande taille puisque c'est là que la gestion de la mémoire cache devient cruciale.
 
+### Bitonic Parallélélisé avec thread
+
+Bitonic séquentiel : 
+
+Temps calcul tri sur les entiers : 0.642676
+Temps calcul tri sur les vecteurs : 22.8185
+
+Bitonic parallèle : 
+
+Temps calcul tri sur les entiers : 0.371432
+Temps calcul tri sur les vecteurs : 14.3885
+
+On obtient un speedup de 2 pour le tri sur les entiers et un speedup de 1.6 pour le tri sur les vecteurs. Ce peut être expliqué par le fait que la parallélisation n'influe que peu sur le temps d'accès à la mémoire, or c'est celui-là qui domine pour le tri sur les vecteurs.
+
+### Bhudda + OMP
+
+Bhudda séquentiel : 
+
+Temps calcul Bhudda 1 : 0.599236
+Temps calcul Bhudda 2 : 0.499484
+Temps calcul Bhudda 3 : 0.0583308
+
+Mesures pour Bhudda3 : 
+
+ OMP_NUM | temps        | speedup |
+---------|--------------|---------|
+  1      |   0.0583308  |    1    |
+  2      |   0.0583585  |    1    |
+  3      |   0.0427801  |   1.36  |
+  4      |   0.0373403  |   1.56  |
+  8      |   0.0440734  |   1.22  |
 
 
 
