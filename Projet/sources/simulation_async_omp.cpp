@@ -9,7 +9,7 @@
 #include "individu.hpp"
 #include "graphisme/src/SDL2/sdl2.hpp"
 
-#define NB_THREADS 2
+#define NB_THREADS 3
 
 void majStatistique(epidemie::Grille &grille, std::vector<epidemie::Individu> const &individus)
 {
@@ -221,7 +221,7 @@ void simulation(bool affiche, int rank)
             }
             // Mise a jour des statistiques pour les cases de la grille :
             majStatistique(grille, population);
-            // On parcout la population pour voir qui est contamine et qui ne l'est pas, d'abord pour la grippe puis pour l'agent pathogene
+            // On parcourt la population pour voir qui est contamine et qui ne l'est pas, d'abord pour la grippe puis pour l'agent pathogene
             std::size_t compteur_grippe = 0, compteur_agent = 0, mouru = 0;
 
 #pragma omp parallel for num_threads(NB_THREADS)

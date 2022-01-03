@@ -97,13 +97,6 @@ void simulation(int argc, char *argv[])
     MPI_Request quitRequest, sendRequest;
 
     constexpr const unsigned int largeur_ecran = 1280, hauteur_ecran = 1024;
-    sdl2::window ecran("Simulation epidemie de grippe", {largeur_ecran, hauteur_ecran});
-
-    // On ferme la fenêtre ouverte par les processus != 0 pour ne garder que celle de l'affichage
-    if (rank != 0)
-    {
-        sdl2::finalize();
-    }
 
     epidemie::ContexteGlobal contexte;
     // contexte.deplacement_maximal = 1; <= Si on veut moins de brassage
@@ -164,7 +157,6 @@ void simulation(int argc, char *argv[])
             new_contamine = 25 - (nbp - 1) * 25 / nbp;
         }
 
-        float temps = 0;
         std::vector<epidemie::Individu> population;
         population.reserve(partition_population);
 
@@ -183,7 +175,6 @@ void simulation(int argc, char *argv[])
             }
         }
 
-        int flag = 0;
         int jour_apparition_grippe = 0;
 
         epidemie::Grippe grippe(0);
@@ -284,11 +275,13 @@ void simulation(int argc, char *argv[])
 
     if (rank == 0)
     {
+        sdl2::window ecran("Simulation epidemie de grippe", {largeur_ecran, hauteur_ecran});
+        sdl2::event_queue queue;
+
         while (!quitting)
         {
             start_day = std::chrono::system_clock::now();
 
-            sdl2::event_queue queue;
             //#############################################################################################################
             //##    Affichage des resultats pour le temps  actuel
             //#############################################################################################################

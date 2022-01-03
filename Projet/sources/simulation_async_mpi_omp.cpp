@@ -9,7 +9,7 @@
 #include "individu.hpp"
 #include "graphisme/src/SDL2/sdl2.hpp"
 
-#define NB_THREADS 2
+#define NB_THREADS 4
 
 void majStatistique(epidemie::Grille &grille, std::vector<epidemie::Individu> const &individus)
 {
@@ -100,17 +100,10 @@ void simulation(int argc, char *argv[])
     MPI_Request quitRequest, sendRequest;
 
     constexpr const unsigned int largeur_ecran = 1280, hauteur_ecran = 1024;
-    sdl2::window ecran("Simulation epidemie de grippe", {largeur_ecran, hauteur_ecran});
-
-    // On ferme la fenêtre ouverte par les processus != 0 pour ne garder que celle de l'affichage
-    if (rank != 0)
-    {
-        sdl2::finalize();
-    }
 
     epidemie::ContexteGlobal contexte;
     // contexte.deplacement_maximal = 1; <= Si on veut moins de brassage
-    // contexte.taux_population = 400'000;
+    contexte.taux_population = 400'000;
     // contexte.taux_population = 1'000;
     contexte.interactions.beta = 60.;
     epidemie::Grille grille{contexte.taux_population};
@@ -167,7 +160,6 @@ void simulation(int argc, char *argv[])
             new_contamine = 25 - (nbp - 1) * 25 / nbp;
         }
 
-        float temps = 0;
         std::vector<epidemie::Individu> population;
         population.reserve(partition_population);
 
@@ -186,7 +178,6 @@ void simulation(int argc, char *argv[])
             }
         }
 
-        int flag = 0;
         int jour_apparition_grippe = 0;
 
         epidemie::Grippe grippe(0);
@@ -238,6 +229,7 @@ void simulation(int argc, char *argv[])
             std::size_t compteur_grippe = 0, compteur_agent = 0, mouru = 0;
 
 #pragma omp parallel for num_threads(NB_THREADS)
+
             for (auto &personne : population)
             {
                 if (personne.testContaminationGrippe(grille, contexte.interactions, grippe, agent))
@@ -289,11 +281,13 @@ void simulation(int argc, char *argv[])
 
     if (rank == 0)
     {
+        sdl2::window ecran("Simulation epidemie de grippe", {largeur_ecran, hauteur_ecran});
+        sdl2::event_queue queue;
+
         while (!quitting)
         {
             start_day = std::chrono::system_clock::now();
 
-            sdl2::event_queue queue;
             //#############################################################################################################
             //##    Affichage des resultats pour le temps  actuel
             //#############################################################################################################

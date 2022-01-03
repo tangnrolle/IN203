@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from time import sleep
 
 def plot_courbe():
-    jours, grippe, patho = np.loadtxt('/home/hypnos/IN/IN203/Promotion_2023/Projet/sources/Courbe.dat').T
+    jours, grippe, patho = np.loadtxt('Courbe.dat').T
     plt.plot(jours, grippe)
     plt.plot(jours, patho)
     plt.xlabel('Duree (jours)')
