@@ -63,10 +63,10 @@ Le Speedup maximal sur la simulation est d'environ 1,3 obtenu pour 3 Threads Ope
 
 num_threads| temps moyen simulation| speedup global
 -----------|-----------------------|---------------
-     1     |     0.0194667s        |    5.2
-     2     |     0.0406031s        |     5
-     3     |     0.0635883s        |    4.73
-     4     |     0.0862882s        |    4.75
+1          |     0.0194667s        |    5.2
+2          |     0.0406031s        |     5
+3          |     0.0635883s        |    4.73
+4          |     0.0862882s        |    4.75
      
 On observe que le speedup global (en comptant l'affichage) est presque constant pour un nombre constant d'individus par processus. Il décroit cependant car il est limité par l'accès mémoire mais OpenMP s'avère très utile pour des grands nombres d'individus.
 
@@ -82,11 +82,11 @@ Pour répartir les individus, il a fallu diviser la population par le nombre de 
 
 À nombre d'individu constant (100 000) par processus on obtient les résultats suivants : 
 
-     np    | temps moyen simulation| speedup global
------------|-----------------------|---------------
-     2     |     0.0415859s        |     5
-     3     |     0.039525s         |    7.5
-     4     |     0.046782s         |    8.5
+np    | temps moyen simulation| speedup global
+------|-----------------------|---------------
+2     |     0.0415859s        |     5
+3     |     0.039525s         |    7.5
+4     |     0.046782s         |    8.5
 
 Cette fois-ci, le speedup augmente avec le nombre de processus à nombre d'individus constant par threads. C'est normal puisque les processus MPI fonctionne sur mémoire distribuée contrairement aux threads OMP qui sont sur mémoire partagée. Les processus MPI sont donc peu limités par l'accès mémoire et le speedup peut continuer d'augmenter quand on augmente le nombre de processus.
 
@@ -98,11 +98,11 @@ Avec cette dernière étape, à nombre d'individus global fixe, on obtient un sp
 
 À nombre d'individus constant par processus et par thread on obtient le tableau suivant:
 
-     np    | temps moyen simulation| speedup global
------------|-----------------------|---------------
-     2     |     0.0409242s        |    5.1
-     3     |     0.0314387s        |    6.8
-     4     |     0.046782s         |     8
+np    | temps moyen simulation| speedup global
+------|-----------------------|---------------
+2     |     0.0409242s        |    5.1
+3     |     0.0314387s        |    6.8
+4     |     0.046782s         |     8
 
 Le speedup augmente principalement grâce aux processus MPI mais l'augmentation du nombre de threads OMP semble à nouveau ralentir l'éxecution à cause de l'accès mémoire concurrentiel.
 
