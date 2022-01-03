@@ -10,6 +10,7 @@
 
 void majStatistique(epidemie::Grille &grille, std::vector<epidemie::Individu> const &individus)
 {
+
     for (auto &statistique : grille.getStatistiques())
     {
         statistique.nombre_contaminant_grippe_et_contamine_par_agent = 0;
@@ -18,6 +19,7 @@ void majStatistique(epidemie::Grille &grille, std::vector<epidemie::Individu> co
     }
     auto [largeur, hauteur] = grille.dimension();
     auto &statistiques = grille.getStatistiques();
+
     for (auto const &personne : individus)
     {
         auto pos = personne.position();
@@ -114,6 +116,66 @@ void simulation(int argc, char *argv[])
 
     auto [largeur_grille, hauteur_grille] = grille.dimension();
 
+    unsigned int graine_aleatoire = 1;
+    std::uniform_real_distribution<double> porteur_pathogene(0., 1.);
+
+    // L'agent pathogene n'evolue pas et reste donc constant...
+    epidemie::AgentPathogene agent(graine_aleatoire++);
+
+    sdl2::event_queue queue;
+
+    int tx_immunises = (contexte.taux_population * 23) / 100;
+    size_t partition_population;
+    int nombre_immunises_grippe;
+    int new_contamine;
+    std::vector<epidemie::Individu> population;
+    int flag = 0;
+    int jour_apparition_grippe = 0;
+    epidemie::Grippe grippe(0);
+    std::ofstream output("Courbe.dat");
+
+    if (rank > 0)
+    {
+        nbp--;
+        if (rank != nbp - 1)
+        {
+            partition_population = contexte.taux_population / nbp;
+            nombre_immunises_grippe = (partition_population * 23) / 100;
+            new_contamine = 25 / nbp;
+        }
+
+        else
+        {
+            partition_population = (contexte.taux_population / nbp) + (contexte.taux_population % nbp);
+            nombre_immunises_grippe = tx_immunises - (nbp - 1) * (partition_population * 23) / 100;
+            new_contamine = 25 - (nbp - 1) * 25 / nbp;
+        }
+        // On répartit la population et le nombre d'immunisés équitablement entre les processus, sauf pour le dernier
+        // auquel on affecte également le reste.
+        // De même pour le nombre de nouvelles contaminations chaque jour.
+
+        float temps = 0;
+        population.reserve(partition_population);
+
+        // Initialisation de la population initiale pour chaque processus :
+        graine_aleatoire += (rank - 1) * partition_population;
+        for (std::size_t i = 0; i < partition_population; ++i)
+        {
+            std::default_random_engine motor(100 * (i + 1));
+            population.emplace_back(graine_aleatoire++, contexte.esperance_de_vie, contexte.deplacement_maximal);
+            population.back().setPosition(largeur_grille, hauteur_grille);
+            if (porteur_pathogene(motor) < 0.2)
+            {
+                population.back().estContamine(agent);
+            }
+        }
+
+        if (rank == 1)
+        {
+            std::cout << "Debut boucle epidemie" << std::endl
+                      << std::flush;
+        }
+    }
     std::size_t jours_ecoules = 0;
 
     bool quitting = false;
@@ -131,73 +193,48 @@ void simulation(int argc, char *argv[])
     grille_tmp.reserve(contexte.taux_population);
     grille_tmp = grille.getStatistiques();
 
+    // On met le processus n°1 en état d'alerte permanent pour se fermer quand on quitte l'affichage (processus n°0)
+
     if (rank > 0)
     {
+        MPI_Irecv(&exit_display, 1, MPI_C_BOOL, 0, 1, MPI_COMM_WORLD, &quitRequest);
+    }
 
-        // On met les processus de rang > 0 en état d'alerte permanent pour se fermer quand on quitte l'affichage (processus n°0)
-        MPI_Irecv(&exit_display, 1, MPI_C_BOOL, 0, 1, globComm, &quitRequest);
+    while (!quitting)
+    {
+        start_day = std::chrono::system_clock::now();
 
-        unsigned int graine_aleatoire = 1;
-        std::uniform_real_distribution<double> porteur_pathogene(0., 1.);
-
-        // On répartit la population et le nombre d'immunisés équitablement entre les processus, sauf pour le dernier
-        // auquel on affecte également le reste.
-        // De même pour le nombre de nouvelles contaminations chaque jour.
-
-        int tx_immunises = (contexte.taux_population * 23) / 100;
-        size_t partition_population;
-        int nombre_immunises_grippe;
-        int new_contamine;
-        nbp--;
-
-        if (rank != nbp)
+        if (rank == 0)
         {
-            partition_population = contexte.taux_population / nbp;
-            nombre_immunises_grippe = (partition_population * 23) / 100;
-            new_contamine = 25 / nbp;
-        }
+            //#############################################################################################################
+            //##    Affichage des resultats pour le temps  actuel
+            //#############################################################################################################
 
-        else
-        {
-            partition_population = (contexte.taux_population / nbp) + (contexte.taux_population % nbp);
-            nombre_immunises_grippe = tx_immunises - (nbp - 1) * (partition_population * 23) / 100;
-            new_contamine = 25 - (nbp - 1) * 25 / nbp;
-        }
-
-        float temps = 0;
-        std::vector<epidemie::Individu> population;
-        population.reserve(partition_population);
-
-        // L'agent pathogene n'evolue pas et reste donc constant...
-        epidemie::AgentPathogene agent(graine_aleatoire++);
-        // Initialisation de la population initiale pour chaque processus :
-        graine_aleatoire += (rank - 1) * (contexte.taux_population / nbp);
-        for (std::size_t i = 0; i < partition_population; ++i)
-        {
-            std::default_random_engine motor(100 * (i + 1));
-            population.emplace_back(graine_aleatoire++, contexte.esperance_de_vie, contexte.deplacement_maximal);
-            population.back().setPosition(largeur_grille, hauteur_grille);
-            if (porteur_pathogene(motor) < 0.2)
+            auto events = queue.pull_events();
+            for (const auto &e : events)
             {
-                population.back().estContamine(agent);
+                if (e->kind_of_event() == sdl2::event::quit)
+                {
+                    quitting = true;
+                    // On envoie également le message de fermeture de la fenêtre au processus de simulation n°1
+                    exit_display = true;
+                    MPI_Isend(&exit_display, 1, MPI_C_BOOL, 1, 1, MPI_COMM_WORLD, &quitRequest);
+                }
             }
+
+            // Reception synchrone bloquée par Iprobe
+
+            MPI_Iprobe(1, 0, MPI_COMM_WORLD, &send_flag, &status);
+            if (send_flag != 0)
+            {
+                MPI_Recv(grille_tmp.data(), largeur_grille * hauteur_grille * 3, MPI_INT, 1, 0, MPI_COMM_WORLD, &status);
+            }
+            grille.set_m_statistiques(grille_tmp);
+            afficheSimulation(ecran, grille, jours_ecoules);
         }
 
-        int flag = 0;
-        int jour_apparition_grippe = 0;
-
-        epidemie::Grippe grippe(0);
-        std::ofstream output("Courbe.dat");
-
-        if (rank == 1)
+        if (rank > 0)
         {
-            std::cout << "Debut boucle epidemie" << std::endl
-                      << std::flush;
-        }
-
-        while (!quitting)
-        {
-            start_day = std::chrono::system_clock::now();
 
             if (jours_ecoules % 365 == 0) // Si le premier Octobre (debut de l'annee pour l'epidemie ;-) )
             {
@@ -233,6 +270,7 @@ void simulation(int argc, char *argv[])
             grille.set_m_statistiques(grille_tmp);
             // On parcout la population pour voir qui est contamine et qui ne l'est pas, d'abord pour la grippe puis pour l'agent pathogene
             std::size_t compteur_grippe = 0, compteur_agent = 0, mouru = 0;
+
             for (auto &personne : population)
             {
                 if (personne.testContaminationGrippe(grille, contexte.interactions, grippe, agent))
@@ -245,7 +283,7 @@ void simulation(int argc, char *argv[])
                     compteur_agent++;
                     personne.estContamine(agent);
                 }
-                // On verifie si il n'y a pas de personne qui veillissent de veillesse et on genere une nouvelle personne si c'est le cas.
+                // On verifie si il n'y a pas de personne qui meurent de veillesse et on genere une nouvelle personne si c'est le cas.
                 if (personne.doitMourir())
                 {
                     mouru++;
@@ -259,13 +297,11 @@ void simulation(int argc, char *argv[])
 
             // Envoi asynchrone
             grille_tmp = grille.getStatistiques();
-            MPI_Isend(grille_tmp.data(), largeur_grille * hauteur_grille * 3, MPI_INT, 0, 0, globComm, &sendRequest);
 
-            end_day_without_display = std::chrono::system_clock::now();
-            mean_simulation_time += end_day_without_display - start_day;
-            output << jours_ecoules << "\t" << grille.nombreTotalContaminesGrippe() << "\t"
-                   << grille.nombreTotalContaminesAgentPathogene() << std::endl;
-            jours_ecoules += 1;
+            // start_send = std::chrono::system_clock::now();
+            MPI_Isend(grille_tmp.data(), largeur_grille * hauteur_grille * 3, MPI_INT, 0, 0, MPI_COMM_WORLD, &sendRequest);
+            // send = std::chrono::system_clock::now() - start_send;
+            // std::cout << send.count() << "\n";
 
             MPI_Test(&quitRequest, &quit_flag, &quitStatus);
             if (quit_flag != 0)
@@ -274,56 +310,25 @@ void simulation(int argc, char *argv[])
             }
         }
 
-        if (rank == 1)
+        if (rank != 0)
         {
-            std::cout << "Temps calcul moyen simulation : " << mean_simulation_time.count() / jours_ecoules << "s\n";
+            end_day_without_display = std::chrono::system_clock::now();
+            mean_simulation_time += end_day_without_display - start_day;
+
+            output << jours_ecoules << "\t" << grille.nombreTotalContaminesGrippe() << "\t"
+                   << grille.nombreTotalContaminesAgentPathogene() << std::endl;
         }
 
-        output.close();
-    }
-
-    if (rank == 0)
-    {
-        while (!quitting)
-        {
-            start_day = std::chrono::system_clock::now();
-
-            sdl2::event_queue queue;
-            //#############################################################################################################
-            //##    Affichage des resultats pour le temps  actuel
-            //#############################################################################################################
-
-            auto events = queue.pull_events();
-            for (const auto &e : events)
-            {
-                if (e->kind_of_event() == sdl2::event::quit)
-                {
-                    quitting = true;
-                    // On envoie également le message de fermeture de la fenêtre au processus de simulation n°1
-                    exit_display = true;
-
-                    for (int i = 1; i < nbp; i++)
-                    {
-                        MPI_Isend(&exit_display, 1, MPI_C_BOOL, i, 1, globComm, &quitRequest);
-                    }
-                    std::cout << "Broadcast quitting request\n";
-                }
-            }
-
-            // Reception synchrone bloquée par Iprobe
-
-            MPI_Iprobe(1, 0, globComm, &send_flag, &status);
-            if (send_flag != 0)
-            {
-                MPI_Recv(grille_tmp.data(), largeur_grille * hauteur_grille * 3, MPI_INT, 1, 0, globComm, &status);
-            }
-            grille.set_m_statistiques(grille_tmp);
-            afficheSimulation(ecran, grille, jours_ecoules);
-
-            jours_ecoules += 1;
-        }
+        jours_ecoules += 1;
 
     } // Fin boucle temporelle
+
+    if (rank == 1)
+    {
+        std::cout << "Temps calcul moyen simulation : " << mean_simulation_time.count() / jours_ecoules << "s\n";
+    }
+
+    output.close();
 }
 
 int main(int argc, char *argv[])
@@ -342,6 +347,8 @@ int main(int argc, char *argv[])
         simulation(argc, argv);
     }
     sdl2::finalize();
+
+    MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Finalize();
     return EXIT_SUCCESS;

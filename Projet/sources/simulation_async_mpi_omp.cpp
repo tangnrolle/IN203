@@ -4,9 +4,12 @@
 #include <fstream>
 #include <chrono>
 #include <mpi.h>
+#include <omp.h>
 #include "contexte.hpp"
 #include "individu.hpp"
 #include "graphisme/src/SDL2/sdl2.hpp"
+
+#define NB_THREADS 2
 
 void majStatistique(epidemie::Grille &grille, std::vector<epidemie::Individu> const &individus)
 {
@@ -233,6 +236,8 @@ void simulation(int argc, char *argv[])
             grille.set_m_statistiques(grille_tmp);
             // On parcout la population pour voir qui est contamine et qui ne l'est pas, d'abord pour la grippe puis pour l'agent pathogene
             std::size_t compteur_grippe = 0, compteur_agent = 0, mouru = 0;
+
+#pragma omp parallel for num_threads(NB_THREADS)
             for (auto &personne : population)
             {
                 if (personne.testContaminationGrippe(grille, contexte.interactions, grippe, agent))
