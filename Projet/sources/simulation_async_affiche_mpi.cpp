@@ -77,7 +77,7 @@ void afficheSimulation(sdl2::window &ecran, epidemie::Grille const &grille, std:
     ecran << sdl2::flush;
 }
 
-void simulation(bool affiche, int rank, int nbp)
+void simulation(bool affiche, int rank)
 {
 
     MPI_Status status;
@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 
     sdl2::init(argc, argv);
     {
-        simulation(affiche, rank, nbp);
+        simulation(affiche, rank);
     }
     sdl2::finalize();
 
