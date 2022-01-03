@@ -62,7 +62,7 @@ Le Speedup maximal sur la simulation est d'environ 1,3 obtenu pour 3 Threads Ope
 À nombre d'individu constant (100 000) par processus on obtient les résultats suivants : 
 
 num_threads| temps moyen simulation| speedup global
------------+-----------------------+---------------
+-----------|-----------------------|---------------
      1     |     0.0194667s        |    5.2
      2     |     0.0406031s        |     5
      3     |     0.0635883s        |    4.73
@@ -83,7 +83,7 @@ Pour répartir les individus, il a fallu diviser la population par le nombre de 
 À nombre d'individu constant (100 000) par processus on obtient les résultats suivants : 
 
      np    | temps moyen simulation| speedup global
------------+-----------------------+---------------
+-----------|-----------------------|---------------
      2     |     0.0415859s        |     5
      3     |     0.039525s         |    7.5
      4     |     0.046782s         |    8.5
@@ -99,7 +99,7 @@ Avec cette dernière étape, à nombre d'individus global fixe, on obtient un sp
 À nombre d'individus constant par processus et par thread on obtient le tableau suivant:
 
      np    | temps moyen simulation| speedup global
------------+-----------------------+---------------
+-----------|-----------------------|---------------
      2     |     0.0409242s        |    5.1
      3     |     0.0314387s        |    6.8
      4     |     0.046782s         |     8
