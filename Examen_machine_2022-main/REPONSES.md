@@ -50,21 +50,34 @@ Temps reconstitution image : 0.0626178s
 Pour la boucle d'encodage DFT parallélisée avec #pragma omp parallel for num_threads(NB_THREADS)
 Sur l'image small_lena_gray.png
 
-NB_threads | temps moyen simulation| speedup global
+La parallélisation se fait sur les pixels puisqu'on répartit un certain nombre d'indices par boucle (partition statique) sur chaque thread. Après l'avoir essayée, la partition dynamique OMP n'accélère pas plus ces deux étapes.
+
+
+NB_threads |    Temps DFT          | speedup global
 -----------|-----------------------|---------------
 2          |     83.0696s          |     1.4
 3          |     56.0319s          |      2
 4          |     41.1409s          |     2.8
 
-De même sur la boucle de reconstitution, on obtient un speedup maximal de 3.9 pour 4 threads OpenMP
+De même sur la boucle de reconstitution où l'on parallélise sur les fréquences, on obtient un speedup maximal de 3.9 pour 4 threads OpenMP
 
-Dans les deux cas, la parallélisation se fait sur les pixels puisqu'on répartit un certain nombre d'indices par boucle (partition statique) sur chaque thread. Après l'avoir essayée, la partition dynamique OMP n'accélère pas plus ces deux étapes.
+Cet optimum dépend de la mémoire allouée à chaque coeur dans la configuration lscpu. 4 threads semble permettre d'atteindre la granularité optimale.
 
 Il est inutile de paralléléliser pour l'instant la boucle de séléction des pixels car son temps d'éxecution est négligeable devant celui des deux autres boucles.
 
 # MPI 1
 
-Je n'ai pas eu le temps de faire la mesure d'accélération.
+nb process |      Temps DFT        | speedup global
+-----------|-----------------------|---------------
+2          |     74.5527s          |     1.5
+3          |     41.7279s          |     2.8
+4          |     32.7235s          |     3.5
+5          |     30.4415s          |     3.8
+4          |     37.4593s          |     3.1
+
+
+On obtient un maximum d'accélération pour 5 de processus MPI. Ma machine possédant 4 coeurs, on assiste ici à l'effet de l'hyperthreading qui permet d'améliorer légèrement les performances par rapport à un nombre de processus égal au nombre de coeurs. Mais l'hyperthreading a ses limites puisque dès qu'on dépasse 5 processus, on redevient moins efficace.
+
 
 
 
